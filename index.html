@@ -1,0 +1,562 @@
+<title>Antrenament Kobz</title>
+<style>
+  :root{
+    --bg:#0E0F13; --surface:#191B21; --surface-2:#22252D; --line:#2C2F38;
+    --text:#F4F5F7; --muted:#9A9DA8; --faint:#6C6F79;
+    --accent:#FF6A33; --accent-press:#E2521F; --accent-dim:rgba(255,106,51,.14);
+    --warn:#FFC24B; --warn-dim:rgba(255,194,75,.12);
+    --good:#3ED598; --good-dim:rgba(62,213,152,.12);
+    --pad:16px; --radius:16px;
+    --safe-t:max(env(safe-area-inset-top),0px);
+    --safe-b:max(env(safe-area-inset-bottom),0px);
+    --safe-l:env(safe-area-inset-left); --safe-r:env(safe-area-inset-right);
+    color-scheme:dark;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--bg); color:var(--text);
+    font-family:-apple-system,system-ui,"SF Pro Text",Segoe UI,Roboto,sans-serif;
+    -webkit-font-smoothing:antialiased; text-rendering:optimizeLegibility;
+    font-size:15px; line-height:1.5; overflow-x:hidden;
+    padding-left:var(--safe-l); padding-right:var(--safe-r);
+  }
+  .wrap{max-width:660px; margin:0 auto; padding:0 var(--pad) calc(64px + var(--safe-b));}
+
+  /* ---- home-screen hint ---- */
+  .hint{
+    display:flex; align-items:center; gap:10px;
+    margin:calc(var(--safe-t) + 10px) 0 4px; padding:10px 12px;
+    background:var(--surface); border:1px solid var(--line); border-radius:12px;
+    color:var(--muted); font-size:12.5px; line-height:1.35;
+  }
+  .hint b{color:var(--text); font-weight:600}
+  .hint .x{margin-left:auto; flex:0 0 auto; width:26px; height:26px; border:none;
+    background:transparent; color:var(--faint); font-size:17px; border-radius:8px; cursor:pointer}
+  .hint .x:active{background:var(--surface-2)}
+
+  /* ---- sticky header ---- */
+  header.top{
+    position:sticky; top:0; z-index:20;
+    background:linear-gradient(var(--bg) 78%,rgba(14,15,19,0));
+    padding-top:8px; margin:0 calc(-1 * var(--pad));
+  }
+  .brandrow{
+    display:flex; align-items:baseline; gap:10px; padding:2px var(--pad) 8px;
+  }
+  .brand{font-size:13px; font-weight:700; letter-spacing:.14em; text-transform:uppercase}
+  .brand .flame{color:var(--accent)}
+  .date{margin-left:auto; font-size:12px; color:var(--muted); letter-spacing:.02em;
+    text-transform:capitalize; font-variant-numeric:tabular-nums}
+
+  /* ---- day tabs ---- */
+  .tabs{display:flex; gap:8px; overflow-x:auto; padding:2px var(--pad) 12px;
+    scrollbar-width:none; -webkit-overflow-scrolling:touch}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{
+    flex:0 0 auto; min-width:64px; padding:8px 12px; border-radius:13px;
+    background:var(--surface); border:1px solid var(--line); color:var(--muted);
+    display:flex; flex-direction:column; align-items:center; gap:2px; cursor:pointer;
+    transition:background .15s,border-color .15s,color .15s;
+  }
+  .tab .d{font-size:14px; font-weight:600; color:var(--text)}
+  .tab .s{font-size:10px; font-weight:700; letter-spacing:.08em}
+  .tab[aria-selected="true"]{background:var(--accent-dim); border-color:var(--accent); color:var(--accent)}
+  .tab[aria-selected="true"] .d{color:var(--text)}
+  .tab[aria-selected="true"] .s{color:var(--accent)}
+  .tab.today::after{content:""; width:4px; height:4px; border-radius:50%; background:var(--accent); margin-top:1px}
+
+  /* ---- large title ---- */
+  .title{position:relative; padding:6px 0 4px}
+  .title::before{content:""; position:absolute; left:-40px; top:-30px; width:220px; height:130px;
+    background:radial-gradient(ellipse at 50% 50%,var(--accent-dim),transparent 70%);
+    filter:blur(6px); pointer-events:none; z-index:-1}
+  .eyebrow{font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--muted)}
+  h1{margin:2px 0 3px; font-size:34px; line-height:1.02; font-weight:800; letter-spacing:-.02em; text-wrap:balance}
+  .subtitle{font-size:14px; color:var(--muted)}
+
+  .rest{margin:10px 0 2px; padding:12px 14px; border-radius:12px; background:var(--good-dim);
+    border:1px solid rgba(62,213,152,.3); color:#bff3dd; font-size:13.5px}
+
+  /* ---- collapsible rules ---- */
+  details.rules{margin:14px 0 4px; background:var(--surface); border:1px solid var(--line); border-radius:12px; overflow:hidden}
+  details.rules>summary{list-style:none; cursor:pointer; padding:12px 14px; display:flex; align-items:center; gap:9px;
+    font-size:13.5px; font-weight:600}
+  details.rules>summary::-webkit-details-marker{display:none}
+  details.rules>summary .chev{margin-left:auto; color:var(--faint); transition:transform .2s}
+  details.rules[open]>summary .chev{transform:rotate(180deg)}
+  .rules-body{padding:0 14px 13px; color:var(--muted); font-size:13px; line-height:1.5}
+  .rules-body p{margin:0 0 8px}
+  .rules-body p:last-child{margin:0}
+  .rules-body b{color:var(--text); font-weight:600}
+
+  /* ---- exercise list ---- */
+  .list{display:flex; flex-direction:column; gap:12px; margin-top:16px}
+  .ex{background:var(--surface); border:1px solid var(--line); border-radius:var(--radius); padding:15px 15px 13px}
+  .ex-head{display:flex; gap:12px; align-items:flex-start}
+  .idx{flex:0 0 auto; width:27px; height:27px; border-radius:9px; background:var(--surface-2);
+    color:var(--muted); font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center;
+    font-variant-numeric:tabular-nums; margin-top:1px}
+  .ex-title{flex:1; min-width:0}
+  .ex-title h3{margin:0; font-size:16.5px; font-weight:700; line-height:1.25; letter-spacing:-.01em}
+  .chips{display:flex; flex-wrap:wrap; gap:6px; margin-top:7px}
+  .chip{font-size:11.5px; font-weight:600; padding:3px 8px; border-radius:8px; letter-spacing:.01em; white-space:nowrap}
+  .chip.muscle{background:var(--surface-2); color:#c9ccd4}
+  .chip.target{background:var(--accent-dim); color:var(--accent); font-variant-numeric:tabular-nums}
+
+  .cue{margin:12px 0 0; font-size:13.5px; line-height:1.5; color:#cfd2da; display:flex; gap:7px}
+  .cue .ic{color:var(--accent); flex:0 0 auto; font-weight:700}
+
+  .note{margin-top:10px; padding:9px 11px; border-radius:10px; font-size:12.5px; line-height:1.45;
+    border-left:3px solid; display:flex; gap:7px}
+  .note.warn{background:var(--warn-dim); border-color:var(--warn); color:#f4d99a}
+  .note.good{background:var(--good-dim); border-color:var(--good); color:#a8eccf}
+  .note .ic{flex:0 0 auto}
+
+  .ref{margin-top:10px; font-size:12px; color:var(--faint)}
+  .ref b{color:var(--muted); font-weight:600}
+
+  .last{margin-top:11px; font-size:12.5px; color:var(--muted); font-variant-numeric:tabular-nums}
+  .last.none{color:var(--faint)}
+  .last b{color:#cfd2da; font-weight:600}
+
+  /* ---- set rows ---- */
+  .sets{margin-top:12px; display:flex; flex-direction:column; gap:8px}
+  .setrow{display:flex; align-items:center; gap:8px}
+  .setlbl{flex:0 0 46px; font-size:12px; font-weight:600; color:var(--muted); text-transform:uppercase; letter-spacing:.04em}
+  .fieldwrap{flex:1; position:relative}
+  .fieldwrap .unit{position:absolute; right:11px; top:50%; transform:translateY(-50%);
+    font-size:12px; color:var(--faint); pointer-events:none; font-weight:600}
+  .setrow input{
+    width:100%; height:46px; padding:0 40px 0 12px; border-radius:11px;
+    background:var(--surface-2); border:1.5px solid var(--line); color:var(--text);
+    font-size:17px; font-weight:600; font-family:inherit; font-variant-numeric:tabular-nums;
+    -webkit-appearance:none; appearance:none; transition:border-color .15s,background .15s;
+  }
+  .setrow input::placeholder{color:var(--faint); font-weight:500}
+  .setrow input:focus{outline:none; border-color:var(--accent); background:#262a32}
+  .setrow.beat input{border-color:var(--good)}
+  .setrow .mult{flex:0 0 auto; color:var(--faint); font-size:14px; font-weight:600}
+  .setrow .flag{flex:0 0 18px; text-align:center; font-size:13px; color:var(--good)}
+
+  .actions{display:flex; gap:9px; margin-top:14px}
+  .save{flex:1; height:46px; border:none; border-radius:12px; background:var(--accent); color:#1a0d05;
+    font-size:15px; font-weight:700; font-family:inherit; letter-spacing:.01em; cursor:pointer;
+    transition:transform .08s,background .15s}
+  .save:active{transform:scale(.985); background:var(--accent-press)}
+  .save.done{background:var(--good); color:#062417}
+  .hist-btn{flex:0 0 auto; height:46px; padding:0 15px; border-radius:12px; background:transparent;
+    border:1.5px solid var(--line); color:var(--muted); font-size:13.5px; font-weight:600; font-family:inherit; cursor:pointer}
+  .hist-btn:active{background:var(--surface-2)}
+
+  .history{margin-top:12px; padding-top:12px; border-top:1px solid var(--line); display:none}
+  .history.open{display:block}
+  .history h4{margin:0 0 8px; font-size:11px; font-weight:700; letter-spacing:.1em; text-transform:uppercase; color:var(--faint)}
+  .hrow{display:flex; gap:10px; padding:5px 0; font-size:12.5px; border-bottom:1px solid rgba(44,47,56,.6);
+    font-variant-numeric:tabular-nums}
+  .hrow:last-child{border-bottom:none}
+  .hrow .hd{flex:0 0 74px; color:var(--muted)}
+  .hrow .hv{color:#cfd2da}
+  .history .empty{font-size:12.5px; color:var(--faint)}
+
+  footer{margin-top:26px; padding:16px 2px 0; border-top:1px solid var(--line); color:var(--faint); font-size:12px; line-height:1.55}
+  footer b{color:var(--muted); font-weight:600}
+
+  /* ---- toast ---- */
+  #toast{position:fixed; left:50%; bottom:calc(22px + var(--safe-b)); transform:translateX(-50%) translateY(20px);
+    background:var(--good); color:#062417; font-size:14px; font-weight:700; padding:11px 20px; border-radius:999px;
+    opacity:0; pointer-events:none; transition:opacity .2s,transform .2s; z-index:60; box-shadow:0 8px 30px rgba(0,0,0,.4)}
+  #toast.show{opacity:1; transform:translateX(-50%) translateY(0)}
+
+  :focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+  @media (prefers-reduced-motion:reduce){
+    *{transition:none !important; animation:none !important}
+  }
+</style>
+
+<div class="wrap">
+  <div class="hint" id="hint">
+    <span>📲</span>
+    <span><b>Adaugă pe ecranul de start:</b> Share → Add to Home Screen</span>
+    <button class="x" id="hintX" aria-label="Închide">×</button>
+  </div>
+
+  <header class="top">
+    <div class="brandrow">
+      <span class="brand"><span class="flame">🔥</span> ANTRENAMENT</span>
+      <span class="date" id="dateLbl"></span>
+    </div>
+    <div class="tabs" id="tabs" role="tablist" aria-label="Zilele săptămânii"></div>
+  </header>
+
+  <section class="title">
+    <div class="eyebrow" id="eyebrow"></div>
+    <h1 id="split"></h1>
+    <div class="subtitle" id="subtitle"></div>
+  </section>
+
+  <div id="restBanner"></div>
+
+  <details class="rules">
+    <summary>🔥 Încălzire &amp; reguli de progresie<span class="chev">⌄</span></summary>
+    <div class="rules-body">
+      <p><b>Încălzire:</b> 5-8 min cardio ușor + 2 seturi progresive la primul exercițiu. Odihnă 90-120s la exercițiile grele, 60s la izolări.</p>
+      <p><b>Progresie:</b> ultimele 2 repetări trebuie să fie GRELE. Adaugă greutate sau 1-2 repetări față de data trecută — coborâre controlată, împinge cu forță.</p>
+      <p><b>🩹 Umăr stâng:</b> arsura musculară e OK, durerea de articulație NU. Oprește-te la prima durere ascuțită. Face pull-ul îți întărește umărul — nu-l sări.</p>
+    </div>
+  </details>
+
+  <div class="list" id="list"></div>
+
+  <footer>
+    <b>Pozele cu execuția vin curând.</b> Până atunci ai indicația scurtă de formă la fiecare exercițiu.<br>
+    Datele tale rămân salvate pe telefon (localStorage). Trimite greutățile după sesiune ca să-ți dau ținta următoare. 💪
+  </footer>
+</div>
+
+<div id="toast">Salvat ✓</div>
+
+<script>
+"use strict";
+/* ---------- program (sursa: authored_tools/gym_plan.py — fără linkuri YT) ---------- */
+var RO_DAYS = ["Luni","Marți","Miercuri","Joi","Vineri","Sâmbătă","Duminică"];
+var RO_MON  = ["ian","feb","mar","apr","mai","iun","iul","aug","sep","oct","nov","dec"];
+
+var PLAN = [
+  { day:"Luni", split:"PUSH", sub:"Piept · Umeri · Triceps", ex:[
+    {name:"Împins înclinat cu gantere", sr:"4×8-12", sets:4, muscle:"Piept sus",
+      cue:"Bancă la 30°, coboară controlat până gantera atinge pieptul, împinge fără să blochezi cotul.",
+      ref:"aparat înclinat 20kg / Smith 15kg"},
+    {name:"Împins orizontal cu gantere", sr:"3×8-12", sets:3, muscle:"Piept",
+      cue:"Coatele la ~45° față de trunchi, coboară lent, strânge pieptul sus.",
+      ref:"aparat culcat 12kg"},
+    {name:"Fluturări la cablu (piept)", sr:"3×12-15", sets:3, muscle:"Piept",
+      cue:"Coatele ușor îndoite, arc scurt, strânge pieptul la mijloc.",
+      note:{t:"warn",x:"Umăr stâng: ROM limitat — nu coborî în întindere adâncă, coatele puțin mai sus, greutate mică. Stop la prima durere ascuțită."},
+      ref:"cabluri 11kg"},
+    {name:"Împins umeri cu gantere, priză neutră", sr:"3×8-12", sets:3, muscle:"Umeri",
+      cue:"Palmele față-n față, împinge pe verticală fără să blochezi cotul.",
+      note:{t:"warn",x:"Umăr stâng: priză neutră. Dacă poziția deasupra capului doare, treci pe landmine press."},
+      ref:"aparat umeri 15kg"},
+    {name:"Ridicări laterale la cablu", sr:"3×12-15", sets:3, muscle:"Umeri lateral",
+      cue:"Greutate mică, ridică strict până la nivelul umărului, fără balans.",
+      note:{t:"warn",x:"Umăr stâng: ușor și strict la cablu, tensiune constantă. Stop la prima durere."},
+      ref:"gantere 6kg"},
+    {name:"Extensii triceps la cablu cu funie", sr:"3×12-15", sets:3, muscle:"Triceps",
+      cue:"Coatele lipite de corp, întinde complet și desfă funia la final.",
+      ref:"gantera 6kg / dips aparat 30kg"}
+  ]},
+  { day:"Marți", split:"PULL", sub:"Spate · Biceps", ex:[
+    {name:"Tracțiuni la helcometru (lat pulldown)", sr:"4×8-10", sets:4, muscle:"Spate · lat",
+      cue:"Trage bara spre piept ducând coatele în jos, pieptul sus, fără să te lași pe spate.",
+      ref:"aparat disc 30kg"},
+    {name:"Ramat cu bara aplecat", sr:"3×8-10", sets:3, muscle:"Spate",
+      cue:"Spate drept, trage bara spre buric, strânge omoplații, coboară controlat.",
+      ref:"cablu bară 25kg / aparat 30kg"},
+    {name:"Ramat la cablu așezat", sr:"3×10-12", sets:3, muscle:"Spate · mijloc",
+      cue:"Piept sus, trage spre abdomen, strânge omoplații, nu te legăna.",
+      ref:"cablu bară lungă 25kg"},
+    {name:"Face pull la cablu (umeri sănătoși)", sr:"3×15-20", sets:3, muscle:"Umeri spate",
+      cue:"Trage funia spre frunte, coatele sus, rotește extern la final.",
+      note:{t:"good",x:"Mișcarea prietenă a umărului — întărește rotatorii externi. Prioritizeaz-o, nu o sări."}},
+    {name:"Flexii biceps cu bara", sr:"3×8-12", sets:3, muscle:"Biceps",
+      cue:"Coatele fixe lângă corp, ridică fără balans, strânge sus, coboară lent.",
+      ref:"Scott 15kg"},
+    {name:"Flexii biceps înclinat cu gantere", sr:"3×10-12", sets:3, muscle:"Biceps",
+      cue:"Pe bancă înclinată, brațele atârnă în spate, întinde complet jos pentru stretch.",
+      ref:"ciocane 10kg / gantere 6kg"}
+  ]},
+  { day:"Miercuri", split:"LEGS", sub:"Picioare", ex:[
+    {name:"Genuflexiuni cu bara", sr:"4×6-8", sets:4, muscle:"Cvadriceps · fese",
+      cue:"Coboară până coapsa e paralelă, genunchii spre vârfuri, împinge din călcâie."},
+    {name:"Îndreptări românești (RDL)", sr:"3×8-10", sets:3, muscle:"Ischio · fese",
+      cue:"Bara aproape de picioare, împinge șoldul în spate, spate drept, simte întinderea."},
+    {name:"Presa de picioare", sr:"3×10-12", sets:3, muscle:"Cvadriceps · fese",
+      cue:"Picioarele la lățimea umerilor, coboară controlat, nu bloca genunchii sus."},
+    {name:"Flexii picioare așezat (ischio)", sr:"3×10-12", sets:3, muscle:"Ischiogambieri",
+      cue:"Trage călcâiele sub scaun, strânge la capăt, revenire lentă."},
+    {name:"Extensii picioare (cvadriceps)", sr:"3×12-15", sets:3, muscle:"Cvadriceps",
+      cue:"Întinde complet, strânge cvadricepsul o secundă sus, coboară controlat."},
+    {name:"Ridicări pe vârfuri (gambe)", sr:"4×12-15", sets:4, muscle:"Gambe",
+      cue:"Ridică-te maxim pe vârfuri, pauză sus, coboară până simți întinderea."}
+  ]},
+  { day:"Joi", split:"UPPER", sub:"Piept · Spate · Umeri", ex:[
+    {name:"Împins orizontal cu gantere", sr:"4×8-12", sets:4, muscle:"Piept",
+      cue:"Coatele la ~45° față de trunchi, coboară lent, strânge pieptul sus.",
+      ref:"aparat culcat 12kg"},
+    {name:"Ramat cu sprijin pe piept", sr:"4×8-10", sets:4, muscle:"Spate",
+      cue:"Piept sprijinit pe bancă, trage coatele în spate, strânge omoplații, fără elan."},
+    {name:"Landmine press (împins blând cu umărul)", sr:"3×8-12", sets:3, muscle:"Umeri",
+      cue:"Împinge bara în sus-înainte pe unghi, controlat, alternând sau cu ambele mâini.",
+      note:{t:"good",x:"Unghi blând cu umărul stâng — alternativa sigură la presa deasupra capului."}},
+    {name:"Tracțiuni la helcometru priză neutră", sr:"3×10-12", sets:3, muscle:"Spate",
+      cue:"Priză neutră (palmele față-n față), trage coatele jos spre coaste.",
+      ref:"aparat disc 30kg"},
+    {name:"Ridicări laterale la cablu", sr:"3×12-15", sets:3, muscle:"Umeri lateral",
+      cue:"Greutate mică, ridică strict până la nivelul umărului, fără balans.",
+      note:{t:"warn",x:"Umăr stâng: ușor și strict la cablu, tensiune constantă. Stop la prima durere."},
+      ref:"gantere 6kg"},
+    {name:"Flexii ciocan cu gantere", sr:"3×10-12", sets:3, muscle:"Biceps · brahial",
+      cue:"Priză neutră (ca un ciocan), coatele fixe, ridică fără balans.",
+      ref:"ciocane 10kg"}
+  ]},
+  { day:"Vineri", split:"ARMS", sub:"Biceps · Triceps", ex:[
+    {name:"Împins la piept cu priză îngustă", sr:"3×8-10", sets:3, muscle:"Triceps · piept",
+      cue:"Mâinile la lățimea umerilor, coatele aproape de corp, împinge din triceps."},
+    {name:"Flexii biceps cu bara", sr:"3×8-12", sets:3, muscle:"Biceps",
+      cue:"Coatele fixe lângă corp, ridică fără balans, strânge sus, coboară lent.",
+      ref:"Scott 15kg"},
+    {name:"Extensii triceps deasupra capului la cablu", sr:"3×10-12", sets:3, muscle:"Triceps · cap lung",
+      cue:"Funia deasupra capului, coatele sus și fixe, întinde complet în sus."},
+    {name:"Flexii biceps înclinat cu gantere", sr:"3×10-12", sets:3, muscle:"Biceps",
+      cue:"Pe bancă înclinată, brațele atârnă în spate, întinde complet jos pentru stretch.",
+      ref:"ciocane 10kg / gantere 6kg"},
+    {name:"Extensii triceps la cablu cu funie", sr:"3×12-15", sets:3, muscle:"Triceps",
+      cue:"Coatele lipite de corp, întinde complet și desfă funia la final.",
+      ref:"gantera 6kg / dips aparat 30kg"},
+    {name:"Flexii biceps la cablu", sr:"3×12-15", sets:3, muscle:"Biceps",
+      cue:"Tensiune constantă de la cablu, coatele fixe, strânge sus, coboară lent."}
+  ]}
+];
+
+/* ---------- time (Europe/Bucharest) ---------- */
+var TZ = "Europe/Bucharest";
+function todayISO(){
+  try{ return new Intl.DateTimeFormat("en-CA",{timeZone:TZ,year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()); }
+  catch(e){ return new Date().toISOString().slice(0,10); }
+}
+function weekdayIdx(){ // 0=Mon .. 6=Sun
+  var wd;
+  try{ wd = new Intl.DateTimeFormat("en-US",{timeZone:TZ,weekday:"short"}).format(new Date()); }
+  catch(e){ wd = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"][new Date().getDay()]; }
+  return ({Mon:0,Tue:1,Wed:2,Thu:3,Fri:4,Sat:5,Sun:6})[wd];
+}
+function dateLabel(){
+  var iso = todayISO(); var p = iso.split("-");
+  var mon = RO_MON[parseInt(p[1],10)-1]; var dn = parseInt(p[2],10);
+  return RO_DAYS[weekdayIdx()] + ", " + dn + " " + mon;
+}
+
+/* ---------- storage ---------- */
+var LS = "kobz_workout_v2";
+function loadAll(){ try{ return JSON.parse(localStorage.getItem(LS)) || {}; }catch(e){ return {}; } }
+function saveAll(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(e){} }
+function keyOf(date,dayIdx,name){ return date + "|" + dayIdx + "|" + name; }
+
+// return sorted [{date, sets:[{w,r}]}] for an exercise, newest first
+function sessionsFor(dayIdx, name){
+  var all = loadAll(); var out = [];
+  for(var k in all){ if(!all.hasOwnProperty(k)) continue;
+    var parts = k.split("|");
+    if(parts.length>=3 && parts[1]==String(dayIdx) && parts.slice(2).join("|")==name){
+      out.push({date:parts[0], sets:all[k]});
+    }
+  }
+  out.sort(function(a,b){ return a.date<b.date?1:(a.date>b.date?-1:0); });
+  return out;
+}
+function prevSession(dayIdx,name,exclDate){
+  var s = sessionsFor(dayIdx,name);
+  for(var i=0;i<s.length;i++){ if(s[i].date!==exclDate) return s[i]; }
+  return null;
+}
+function fmtSets(sets){
+  var parts = [];
+  for(var i=0;i<sets.length;i++){ var s=sets[i];
+    if(s && (s.w!=null || s.r!=null)) parts.push((s.w!=null?s.w:"–")+"×"+(s.r!=null?s.r:"–"));
+  }
+  return parts.join("  ·  ");
+}
+function fmtDate(iso){ var p=iso.split("-"); return parseInt(p[2],10)+" "+RO_MON[parseInt(p[1],10)-1]; }
+
+/* ---------- render ---------- */
+var listEl = document.getElementById("list");
+var tabsEl = document.getElementById("tabs");
+var TODAY = todayISO();
+var TODAY_IDX = weekdayIdx();
+var active = (TODAY_IDX>=0 && TODAY_IDX<=4) ? TODAY_IDX : 0; // weekend -> Luni
+
+document.getElementById("dateLbl").textContent = dateLabel();
+
+function buildTabs(){
+  tabsEl.innerHTML = "";
+  for(var i=0;i<PLAN.length;i++){
+    (function(i){
+      var b = document.createElement("button");
+      b.className = "tab" + (i===TODAY_IDX?" today":"");
+      b.setAttribute("role","tab");
+      b.setAttribute("aria-selected", i===active ? "true":"false");
+      b.innerHTML = '<span class="d">'+PLAN[i].day+'</span><span class="s">'+PLAN[i].split+'</span>';
+      b.addEventListener("click", function(){ active=i; buildTabs(); renderDay(i);
+        window.scrollTo({top:0, behavior:(matchMedia("(prefers-reduced-motion:reduce)").matches?"auto":"smooth")}); });
+      tabsEl.appendChild(b);
+    })(i);
+  }
+}
+
+function renderDay(i){
+  var d = PLAN[i];
+  document.getElementById("eyebrow").textContent = d.day + " · " + d.ex.length + " exerciții";
+  document.getElementById("split").textContent = d.split;
+  document.getElementById("subtitle").textContent = d.sub;
+
+  var rb = document.getElementById("restBanner");
+  if(TODAY_IDX>4 && i===active){
+    rb.innerHTML = '<div class="rest">🛌 Azi e zi de odihnă ('+RO_DAYS[TODAY_IDX]+'). Recuperare, mâncare la surplus, somn 7-9h. Mai jos vezi programul de Luni.</div>';
+  } else { rb.innerHTML = ""; }
+
+  listEl.innerHTML = "";
+  for(var e=0;e<d.ex.length;e++){ listEl.appendChild(buildCard(i, e, d.ex[e])); }
+}
+
+function buildCard(dayIdx, exIdx, ex){
+  var card = document.createElement("article");
+  card.className = "ex";
+
+  var html = '';
+  html += '<div class="ex-head">';
+  html +=   '<div class="idx">'+(exIdx+1)+'</div>';
+  html +=   '<div class="ex-title"><h3>'+esc(ex.name)+'</h3>';
+  html +=     '<div class="chips"><span class="chip muscle">'+esc(ex.muscle)+'</span>'
+           + '<span class="chip target">'+esc(ex.sr)+'</span></div></div>';
+  html += '</div>';
+  html += '<p class="cue"><span class="ic">↳</span><span>'+esc(ex.cue)+'</span></p>';
+  if(ex.note){
+    var ic = ex.note.t==="good" ? "🩹" : "⚠️";
+    html += '<div class="note '+ex.note.t+'"><span class="ic">'+ic+'</span><span>'+esc(ex.note.x)+'</span></div>';
+  }
+  if(ex.ref){
+    html += '<div class="ref"><b>Pornire</b> (reper vechi antrenor): '+esc(ex.ref)+'</div>';
+  }
+
+  var prev = prevSession(dayIdx, ex.name, TODAY);
+  if(prev){
+    html += '<div class="last">📈 <b>Data trecută</b> ('+fmtDate(prev.date)+'): '+esc(fmtSets(prev.sets))+'</div>';
+  } else {
+    html += '<div class="last none">Fără istoric încă — logează prima sesiune și bate-o data viitoare.</div>';
+  }
+
+  // saved-today values (so re-open shows what he entered)
+  var todayData = loadAll()[keyOf(TODAY,dayIdx,ex.name)] || null;
+
+  html += '<div class="sets">';
+  for(var s=0;s<ex.sets;s++){
+    var pw = prev && prev.sets[s] && prev.sets[s].w!=null ? prev.sets[s].w : "";
+    var pr = prev && prev.sets[s] && prev.sets[s].r!=null ? prev.sets[s].r : "";
+    var vw = todayData && todayData[s] && todayData[s].w!=null ? todayData[s].w : "";
+    var vr = todayData && todayData[s] && todayData[s].r!=null ? todayData[s].r : "";
+    html += '<div class="setrow" data-set="'+s+'" data-pw="'+pw+'" data-pr="'+pr+'">';
+    html +=   '<span class="setlbl">Set '+(s+1)+'</span>';
+    html +=   '<div class="fieldwrap"><input class="in-w" inputmode="decimal" enterkeyhint="next" '
+            + 'value="'+vw+'" placeholder="'+(pw!==""?pw:"kg")+'" aria-label="Greutate set '+(s+1)+'"><span class="unit">kg</span></div>';
+    html +=   '<span class="mult">×</span>';
+    html +=   '<div class="fieldwrap"><input class="in-r" inputmode="numeric" enterkeyhint="done" '
+            + 'value="'+vr+'" placeholder="'+(pr!==""?pr:"rep")+'" aria-label="Repetări set '+(s+1)+'"><span class="unit">rep</span></div>';
+    html +=   '<span class="flag"></span>';
+    html += '</div>';
+  }
+  html += '</div>';
+
+  html += '<div class="actions">';
+  html +=   '<button class="save" type="button">Salvează</button>';
+  html +=   '<button class="hist-btn" type="button">Istoric</button>';
+  html += '</div>';
+  html += '<div class="history"><h4>Istoric</h4><div class="hbody"></div></div>';
+
+  card.innerHTML = html;
+
+  // live "beat last time" feedback
+  var rows = card.querySelectorAll(".setrow");
+  for(var ri=0;ri<rows.length;ri++){
+    (function(row){
+      var w = row.querySelector(".in-w"), r = row.querySelector(".in-r"), flag = row.querySelector(".flag");
+      function check(){
+        var pw = parseFloat(row.getAttribute("data-pw")); var pr = parseFloat(row.getAttribute("data-pr"));
+        var cw = parseFloat(w.value); var cr = parseFloat(r.value);
+        var beat = false;
+        if(!isNaN(cw) && !isNaN(cr) && !isNaN(pw) && !isNaN(pr)){
+          if(cw>pw || (cw===pw && cr>pr)) beat = true;
+        }
+        row.classList.toggle("beat", beat);
+        flag.textContent = beat ? "↑" : "";
+      }
+      w.addEventListener("input", check); r.addEventListener("input", check);
+      check();
+    })(rows[ri]);
+  }
+
+  // save
+  card.querySelector(".save").addEventListener("click", function(){
+    var sets = [];
+    var rws = card.querySelectorAll(".setrow");
+    for(var q=0;q<rws.length;q++){
+      var wv = rws[q].querySelector(".in-w").value.trim().replace(",",".");
+      var rv = rws[q].querySelector(".in-r").value.trim();
+      sets.push({ w: wv===""?null:parseFloat(wv), r: rv===""?null:parseInt(rv,10) });
+    }
+    var all = loadAll();
+    var anyVal = sets.some(function(x){ return x.w!=null || x.r!=null; });
+    var k = keyOf(TODAY, dayIdx, ex.name);
+    if(anyVal){ all[k] = sets; } else { delete all[k]; }
+    saveAll(all);
+    var btn = this; btn.textContent = "Salvat ✓"; btn.classList.add("done");
+    setTimeout(function(){ btn.textContent="Salvează"; btn.classList.remove("done"); }, 1400);
+    toast("Salvat ✓  " + ex.name.split(" ").slice(0,2).join(" "));
+    refreshHistory(card, dayIdx, ex.name);
+    // update "data trecută" line stays (previous session); nothing else needed
+  });
+
+  // history toggle
+  var hist = card.querySelector(".history");
+  card.querySelector(".hist-btn").addEventListener("click", function(){
+    var open = hist.classList.toggle("open");
+    this.textContent = open ? "Ascunde" : "Istoric";
+    if(open) refreshHistory(card, dayIdx, ex.name);
+  });
+
+  return card;
+}
+
+function refreshHistory(card, dayIdx, name){
+  var body = card.querySelector(".hbody");
+  var s = sessionsFor(dayIdx, name);
+  if(!s.length){ body.innerHTML = '<div class="empty">Încă nimic logat.</div>'; return; }
+  var h = "";
+  for(var i=0;i<s.length && i<12;i++){
+    h += '<div class="hrow"><span class="hd">'+fmtDate(s[i].date)+'</span><span class="hv">'+esc(fmtSets(s[i].sets))+'</span></div>';
+  }
+  body.innerHTML = h;
+}
+
+/* ---------- toast ---------- */
+var toastEl = document.getElementById("toast"); var toastT;
+function toast(msg){
+  toastEl.textContent = msg; toastEl.classList.add("show");
+  clearTimeout(toastT); toastT = setTimeout(function(){ toastEl.classList.remove("show"); }, 1700);
+}
+
+/* ---------- util ---------- */
+function esc(s){ return String(s).replace(/[&<>"']/g,function(c){
+  return ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"})[c]; }); }
+
+/* ---------- home-screen hint dismiss ---------- */
+(function(){
+  var hint = document.getElementById("hint");
+  try{ if(localStorage.getItem("kobz_hint_hidden")==="1") hint.style.display="none"; }catch(e){}
+  document.getElementById("hintX").addEventListener("click", function(){
+    hint.style.display="none"; try{ localStorage.setItem("kobz_hint_hidden","1"); }catch(e){}
+  });
+})();
+
+/* ---------- best-effort: enable safe-area insets on home-screen ---------- */
+(function(){
+  try{
+    var m = document.querySelector('meta[name="viewport"]');
+    if(m && m.content.indexOf("viewport-fit")<0){ m.content += ", viewport-fit=cover"; }
+  }catch(e){}
+})();
+
+/* ---------- go ---------- */
+buildTabs();
+renderDay(active);
+</script>
