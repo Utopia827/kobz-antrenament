@@ -219,7 +219,7 @@
 
   <footer>
     <b>Pozele cu execuția vin curând.</b> Până atunci ai indicația scurtă de formă la fiecare exercițiu.<br>
-    Datele tale rămân salvate pe telefon (localStorage). Trimite greutățile după sesiune ca să-ți dau ținta următoare. 💪
+    Datele se salvează pe server și se sincronizează pe toate telefoanele (cu backup local pe telefon). Jarvis îți poate completa antrenamentele. 💪
   </footer>
 </div>
 
@@ -346,11 +346,89 @@ function dateLabel(){
   return RO_DAYS[weekdayIdx()] + ", " + dn + " " + mon;
 }
 
-/* ---------- storage ---------- */
+/* ---------- storage (server-backed via Supabase + localStorage offline fallback) ---------- */
 var LS = "kobz_workout_v2";
-function loadAll(){ try{ return JSON.parse(localStorage.getItem(LS)) || {}; }catch(e){ return {}; } }
-function saveAll(o){ try{ localStorage.setItem(LS, JSON.stringify(o)); }catch(e){} }
+var MEM = {};   // in-memory truth: "date|dayIdx|name" -> [{w,r,note}]
+function readLS(){ try{ return JSON.parse(localStorage.getItem(LS)) || {}; }catch(e){ return {}; } }
+function writeLS(){ try{ localStorage.setItem(LS, JSON.stringify(MEM)); }catch(e){} }
+function loadAll(){ return MEM; }              // call-sites read the shared MEM object
+function saveAll(o){ MEM = o; writeLS(); }     // and persist it locally
 function keyOf(date,dayIdx,name){ return date + "|" + dayIdx + "|" + name; }
+
+/* ---------- Supabase (REST, anon key — safe to embed for a single-user personal app) ---------- */
+var SB_URL   = "https://xflfbphbklbntrspkwsv.supabase.co";
+var SB_ANON  = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhmbGZicGhia2xibnRyc3Brd3N2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODIzMTgxNjgsImV4cCI6MjA5Nzg5NDE2OH0.fqqfbHx7erXzp-YCz4PEd04gDWAMgrvsdGT2THsi3mw";
+var SB_TABLE = "workout_logs";
+var SB_ON    = SB_URL.indexOf("http") === 0 && SB_ANON.indexOf("__") !== 0; // wired?
+function sbHeaders(extra){
+  var h = { apikey:SB_ANON, Authorization:"Bearer "+SB_ANON, "Content-Type":"application/json" };
+  if(extra){ for(var k in extra){ h[k]=extra[k]; } }
+  return h;
+}
+function dayName(dayIdx){ return PLAN[dayIdx] ? PLAN[dayIdx].day : String(dayIdx); }
+function dayIdxOf(name){ for(var i=0;i<PLAN.length;i++){ if(PLAN[i].day===name) return i; } return -1; }
+function exDayIdx(exercise){ for(var i=0;i<PLAN.length;i++){ for(var e=0;e<PLAN[i].ex.length;e++){ if(PLAN[i].ex[e].name===exercise) return i; } } return -1; }
+function resolveDayIdx(day, exercise){ var d=dayIdxOf(day); if(d>=0) return d; var e=exDayIdx(exercise); return e>=0?e:0; }
+
+// server rows -> MEM-shaped map
+function serverToMem(rows){
+  var m = {};
+  for(var i=0;i<rows.length;i++){
+    var row = rows[i];
+    var di  = resolveDayIdx(row.day, row.exercise);
+    var k   = row.log_date + "|" + di + "|" + row.exercise;
+    if(!m[k]) m[k] = [];
+    var w  = (row.weight_kg==null||row.weight_kg==="") ? null : Number(row.weight_kg);
+    var rp = (row.reps==null||row.reps==="") ? null : Number(row.reps);
+    m[k][row.set_index] = { w:w, r:rp, note:row.note||null };
+  }
+  for(var kk in m){ var a=m[kk]; for(var j=0;j<a.length;j++){ if(!a[j]) a[j]={w:null,r:null}; } }
+  return m;
+}
+// one MEM key -> array of table rows (skips fully-empty sets)
+function memKeyToRows(k){
+  var p = k.split("|"), date=p[0], di=parseInt(p[1],10), name=p.slice(2).join("|");
+  var sets = MEM[k] || [], out = [], now = new Date().toISOString();
+  for(var s=0;s<sets.length;s++){
+    var v = sets[s]; if(!v) continue;
+    if(v.w==null && v.r==null && !v.note) continue;
+    out.push({ log_date:date, day:dayName(di), exercise:name, set_index:s,
+               weight_kg:v.w, reps:v.r, note:v.note||null, updated_at:now });
+  }
+  return out;
+}
+function sbFetchAll(){
+  if(!SB_ON) return Promise.resolve([]);
+  return fetch(SB_URL+"/rest/v1/"+SB_TABLE+"?select=*", { headers:sbHeaders() })
+    .then(function(r){ return r.ok ? r.json() : []; }).catch(function(){ return []; });
+}
+function sbUpsert(rows){
+  if(!SB_ON || !rows.length) return Promise.resolve();
+  return fetch(SB_URL+"/rest/v1/"+SB_TABLE+"?on_conflict=log_date,exercise,set_index",
+    { method:"POST", headers:sbHeaders({ Prefer:"resolution=merge-duplicates,return=minimal" }),
+      body:JSON.stringify(rows) }).catch(function(){});
+}
+function sbDeleteExercise(date, exercise){
+  if(!SB_ON) return Promise.resolve();
+  var q = "?log_date=eq."+encodeURIComponent(date)+"&exercise=eq."+encodeURIComponent(exercise);
+  return fetch(SB_URL+"/rest/v1/"+SB_TABLE+q, { method:"DELETE", headers:sbHeaders({ Prefer:"return=minimal" }) }).catch(function(){});
+}
+function pushKeys(keys){
+  var rows=[]; for(var i=0;i<keys.length;i++){ rows=rows.concat(memKeyToRows(keys[i])); }
+  return sbUpsert(rows);
+}
+// pull server truth, migrate any local-only sessions UP, then repaint
+function syncFromServer(){
+  return sbFetchAll().then(function(rows){
+    var sm = serverToMem(rows);
+    var toPush = [];
+    for(var lk in MEM){ if(!sm.hasOwnProperty(lk)) toPush.push(lk); }  // local-only -> migrate up
+    for(var sk in sm){ MEM[sk] = sm[sk]; }                            // server wins where it has data
+    writeLS();
+    if(toPush.length) pushKeys(toPush);
+    renderDay(active);                                                // repaint with merged data
+  });
+}
 
 // return sorted [{date, sets:[{w,r}]}] for an exercise, newest first
 function sessionsFor(dayIdx, name){
@@ -508,6 +586,8 @@ function buildCard(dayIdx, exIdx, ex){
     var k = keyOf(TODAY, dayIdx, ex.name);
     if(anyVal){ all[k] = sets; } else { delete all[k]; }
     saveAll(all);
+    // sync this exercise up to the server (replace its rows for today)
+    sbDeleteExercise(TODAY, ex.name).then(function(){ if(anyVal) return sbUpsert(memKeyToRows(k)); });
     var btn = this; btn.textContent = "Salvat ✓"; btn.classList.add("done");
     setTimeout(function(){ btn.textContent="Salvează"; btn.classList.remove("done"); }, 1400);
     toast("Salvat ✓  " + ex.name.split(" ").slice(0,2).join(" "));
@@ -566,6 +646,8 @@ function esc(s){ return String(s).replace(/[&<>"']/g,function(c){
 })();
 
 /* ---------- go ---------- */
+MEM = readLS();          // instant paint from local (offline fallback)
 buildTabs();
 renderDay(active);
+syncFromServer();        // then pull server truth + migrate local-only sessions up
 </script>
