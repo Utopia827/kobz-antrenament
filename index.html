@@ -23,12 +23,12 @@
     font-size:15px; line-height:1.5; overflow-x:hidden;
     padding-left:var(--safe-l); padding-right:var(--safe-r);
   }
-  .wrap{max-width:660px; margin:0 auto; padding:0 var(--pad) calc(64px + var(--safe-b));}
+  .wrap{max-width:660px; margin:0 auto; padding:var(--safe-t) var(--pad) calc(64px + var(--safe-b));}
 
   /* ---- home-screen hint ---- */
   .hint{
     display:flex; align-items:center; gap:10px;
-    margin:calc(var(--safe-t) + 10px) 0 4px; padding:10px 12px;
+    margin:10px 0 4px; padding:10px 12px;
     background:var(--surface); border:1px solid var(--line); border-radius:12px;
     color:var(--muted); font-size:12.5px; line-height:1.35;
   }
@@ -39,15 +39,21 @@
 
   /* ---- sticky header ---- */
   header.top{
-    position:sticky; top:0; z-index:20;
+    position:sticky; top:var(--safe-t); z-index:20;
     background:linear-gradient(var(--bg) 78%,rgba(14,15,19,0));
     padding-top:8px; margin:0 calc(-1 * var(--pad));
   }
   .brandrow{
-    display:flex; align-items:baseline; gap:10px; padding:2px var(--pad) 8px;
+    display:flex; align-items:center; gap:10px; padding:2px var(--pad) 8px;
   }
   .brand{font-size:13px; font-weight:700; letter-spacing:.14em; text-transform:uppercase}
   .brand .flame{color:var(--accent)}
+  .avatar{
+    flex:0 0 auto; width:46px; height:46px; border-radius:50%;
+    object-fit:cover; object-position:center;
+    border:2px solid var(--accent); box-shadow:0 0 0 3px var(--accent-dim);
+    background:var(--surface-2);
+  }
   .date{margin-left:auto; font-size:12px; color:var(--muted); letter-spacing:.02em;
     text-transform:capitalize; font-variant-numeric:tabular-nums}
 
@@ -187,6 +193,7 @@
     <div class="brandrow">
       <span class="brand"><span class="flame">🔥</span> ANTRENAMENT</span>
       <span class="date" id="dateLbl"></span>
+      <img class="avatar" src="kobz.jpg" width="46" height="46" alt="Kobz" fetchpriority="high">
     </div>
     <div class="tabs" id="tabs" role="tablist" aria-label="Zilele săptămânii"></div>
   </header>
